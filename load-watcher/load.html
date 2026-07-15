@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/x-icon" href="/images/go.ico">
+<style>
+canvas{border:1px solid red;}
+</style>
+</head>
+<body>
+<a href="http://~~dom~~~~url~~?edit">edit</a>
+<br>
+<button id="connect" onclick="toggle()" >click to connect</button>
+<br>
+<canvas id="canvas1" width="240" height="180">
+<div id="status">status div</div>
+
+<script>
+/////////////////////////////////////////////
+//
+//   load drawing canvas stuff
+//
+/////////////////////////////////////////////
+const canvas = document.getElementById("canvas1");
+const ctx = canvas.getContext('2d');
+let load_pts = [];
+const xmax=canvas.width;
+const ymax=canvas.height;
+
+function draw_graph(){
+  // Keep load_pts to max of ymax pixels long (might have to be ymax/2 if that doesn't look good)
+  if (load_pts.length>ymax){load_pts.shift()};
+  if (load_pts.length <2){return;}
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  dist=xmax / ( load_pts.length - 1 ) ;
+  num = load_pts.length;
+  i=0;
+  x0=0;
+  y0=ymax-ymax*load_pts[i];
+  ctx.moveTo(x0,y0);
+  i=i+1;
+  while (i < num )
+    {
+    x1=x0+dist;
+    y1=ymax-ymax*load_pts[i];
+    ctx.lineTo(x1,y1);
+    if (DEBUG)
+      {
+      console.log("drew to "+x1+","+y1);
+      };
+    x0=x1;
+    y0=y1;
+    i=i+1;
+    };
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  };
+//
+
+const cBTN = document.getElementById("connect");
+const statusDIV=document.getElementById("status")  
+const max_reconnects=3;
+let tried_reconn=1;
+
+const DEBUG=0; // set to 1 for spam in console.
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+if (cBTN) {
+    // Intercept the textContent property
+    const descriptor = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+    Object.defineProperty(cBTN, 'textContent', {
+        set(value) {
+            if (DEBUG)
+              {
+              console.log(`%c[DOM Change] textContent being set to: "${value}"`, "color: orange; font-weight: bold;");
+              }
+            descriptor.set.call(this, value); }, get() { return descriptor.get.call(this); } });}
+
+let ws;
+function toggle() {
+  let n = cBTN.textContent;
+  if (n == "click to connect")
+    {
+    cBTN.textContent="connecting..."; 
+    connect();
+    }
+  }
+function connect() {
+  //
+  // change localhost to your server name if desired
+  //
+  ws = new WebSocket("ws://localhost:8777");
+  ws.addEventListener("open", () => {
+    statusDIV.textContent = "connected";
+    cBTN.textContent = "";
+    tried_reconn=0;
+  });
+
+  ws.addEventListener("message", (e) => {
+    let msg;
+
+    try {
+        msg = JSON.parse(e.data);
+        //console.log("rcvd: "+ e.data);
+    } catch (err) {
+        console.warn("Non-JSON message:", e.data);
+        return;
+    }
+    switch (msg.type) {
+        case "load":
+            load_pts.push(msg.text);
+            draw_graph();
+            break;
+        case "error":
+            console.log("this is from an error",msg.type, msg.text);
+            break;
+        case "status":
+            document.getElementById("status").textContent = msg.text;
+            break;
+        default:
+            console.warn("Unknown message type:", msg);
+    }
+    if (DEBUG)
+      {
+      console.log("[OLD]recv:", e.data); 
+      };
+  });
+
+  ws.addEventListener("close", async (e) => 
+    {
+    // console.log("closed:", e.code, e.reason);
+    statusDIV.textContent = "connection to server closed.";
+    cBTN.textContent = "connecting...";
+    console.log("reconnecting from close event");
+    tried_reconn++;
+    if (tried_reconn <= max_reconnects)
+      {
+      console.log("Try: "+tried_reconn+" reconnecting...");
+      setTimeout(connect, 500);
+      };
+    if (tried_reconn > max_reconnects)
+      {
+      cBTN.textContent="click to connect";
+      tried_reconn = 0;
+      await wait(200);
+      console.log("Max reconnects reached, reseting cBTN");
+      };
+    });
+    
+  ws.addEventListener("error", (e) => 
+    { 
+    console.log("ws error:", e);
+    });
+}
+cBTN.textContent="click to connect";
+</script></body></html>
