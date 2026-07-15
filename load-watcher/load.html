@@ -28,10 +28,11 @@ const ymax=canvas.height;
 
 function draw_graph(){
   // Keep load_pts to max of ymax pixels long (might have to be ymax/2 if that doesn't look good)
-  if (load_pts.length>ymax){load_pts.shift()};
+  if (load_pts.length>ymax) { load_pts.shift() }; // this dumps the oldest load_pts element.
+  // AI also pointed out that shift without the () does nothing...  Two bugs and then it worked as I wrote it...
   if (load_pts.length <2){return;}
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
+  ctx.beginPath();   // AI told me to add this line - it wasn't clearing the canvas without it lol - don't trust the web.
   dist=xmax / ( load_pts.length - 1 ) ;
   num = load_pts.length;
   i=0;
