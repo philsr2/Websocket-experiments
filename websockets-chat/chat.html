@@ -1,1 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>WebSocket Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+table, th, td {
+  border: 1px solid;
+  border-collapse: collapse;
+  margin: 5px;
+  padding: 5px;
+  height: 1em;
+  }
+</style>
+<link rel="icon" type="image/x-icon" href="/images/go.ico">
+</head>
+<body>
+    <div id="status" style="width: 40%;">status here</div>
+    <h3>Secure WebSocket Chat</h3>
+    <div id="chatbox"></div>
+    <input type="text" id="message" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+    <br>
+    <!-- <div id="msgDiv" style="width: 60%;overflow-y: scroll;height: 400px;">
+    -->
+    <div id="msgDiv" style="width: 60%">
+        <div id="old" >Old messages auto-expire<br>text starts here</div>
+    </div>
 
+
+<script>
+let ws;
+
+function connect() {
+  oldDiv=document.getElementById("old");
+  setTimeout(() => {oldDiv.remove();  }, 60000);
+  console.log("oldDiv removed");
+
+  ws = new WebSocket("ws://localhost:8765");
+  ws.addEventListener("open", () => {
+    document.getElementById("status").textContent = "connected";
+  });
+
+  ws.addEventListener("message", (e) => {
+    let msg;
+    let now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    let seconds = now.getSeconds();
+
+    hours = hours < 10 ? "0" + hours : hours;
+    minutes = minutes < 10 ? "0" + minutes : minutes;
+    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+    let timest = now.getTime();
+    let container = document.getElementById("msgDiv");
+    const newdiv = document.createElement('div');
+    newdiv.id = timest;
+
+    newdiv.style.backgroundColor = '#a0f0a0';
+
+    setTimeout(() => {newdiv.style.backgroundColor = "#ffff99";}, 10000);
+    setTimeout(() => {newdiv.style.backgroundColor = "#ff9999";}, 20000);
+    setTimeout(() => {newdiv.remove();  }, 30000);
+
+    let ts=`${hours}:${minutes}:${seconds}`
+    try {
+        msg = JSON.parse(e.data);
+    } catch (err) {
+        console.warn("Non-JSON message:", e.data);
+        return;
+    }
+    switch (msg.type) {
+        case "chat":
+            container.insertBefore(newdiv,container.firstChild);
+            document.getElementById(timest).textContent = "<" + ts + ">" + "["+msg.from_id+"]  "+msg.msg;
+            break;
+        case "echo":
+            container.insertBefore(newdiv,container.firstChild);
+            document.getElementById(timest).textContent = "<" + ts + ">" + "[You: ] "+msg.text;
+            break;
+        case "error":
+            console.log("this is from an error",msg.type, msg.text);
+            break;
+        case "status":
+            document.getElementById("status").textContent = msg.text;
+            break;
+        default:
+            console.warn("Unknown message type:", msg);
+    }
+    console.log("[OLD]recv:", e.data); 
+  });
+
+  ws.addEventListener("close", (e) => {
+    console.log("closed:", e.code, e.reason);
+    document.getElementById("status").textContent = "cannot connect to server...";
+    // optional: try reconnect after a moment
+    setTimeout(connect, 500);
+  });
+
+  ws.addEventListener("error", (e) => {
+    console.log("ws error:", e);
+  });
+}
+
+connect();
+
+function sendMessage() {
+  const messageInput = document.getElementById("message");
+  const text = messageInput.value;
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.log("Not connected; readyState=", ws?.readyState);
+    return;
+  }
+
+  ws.send(text);
+  messageInput.value = "";
+  };
+
+let node = document.getElementById("message");
+node.addEventListener("keyup", function(event)
+  {
+    if (event.key === "Enter") {
+        sendMessage();
+    };
+  });
+
+</script>
+</body></html>
