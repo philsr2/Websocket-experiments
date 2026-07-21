@@ -2,16 +2,20 @@
 <html lang="en">
 <head>
 <link rel="icon" type="image/x-icon" href="/images/go.ico">
+<!-- the following two lines make the load graph draggable -->
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://code.jquery.com/ui/1.14.2/jquery-ui.js"></script>
 <style>
 canvas{border:1px solid red;}
 </style>
 </head>
 <body>
-<br>
-<button id="connect" onclick="toggle()" >click to connect</button>
-<br>
-<canvas id="canvas1" width="240" height="180">
-<div id="status">status div</div>
+<div id="draggable" class="ui-widget-content">
+  <a href="http://~~dom~~~~url~~?edit">edit page</a>
+  <button id="status" style="border 11px solid blue;">status</button>
+  <button id="connect" onclick="toggle()" >click to connect</button><br>
+  <canvas id="canvas1" width="320" height="240"><br>
+</div>
 
 <script>
 /////////////////////////////////////////////
@@ -22,27 +26,31 @@ canvas{border:1px solid red;}
 const canvas = document.getElementById("canvas1");
 const ctx = canvas.getContext('2d');
 let load_pts = [];
+let max=0.25;
 const xmax=canvas.width;
 const ymax=canvas.height;
 
 function draw_graph(){
   // Keep load_pts to max of ymax pixels long (might have to be ymax/2 if that doesn't look good)
-  if (load_pts.length>ymax) { load_pts.shift() }; // this dumps the oldest load_pts element.
-  // AI also pointed out that shift without the () does nothing...  Two bugs and then it worked as I wrote it...
+  if (load_pts.length>ymax){load_pts.shift()};
   if (load_pts.length <2){return;}
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();   // AI told me to add this line - it wasn't clearing the canvas without it lol - don't trust the web.
+  ctx.beginPath();
+  ctx.textAlign = 'center';
+  ctx.font = "bold 18px Arial";
+  ctx.fillText('Load avg', 100, 15);
   dist=xmax / ( load_pts.length - 1 ) ;
   num = load_pts.length;
   i=0;
   x0=0;
-  y0=ymax-ymax*load_pts[i];
+  y0=ymax - (ymax/max*.9) * load_pts[i];
   ctx.moveTo(x0,y0);
   i=i+1;
   while (i < num )
     {
+    if (load_pts[i]>max) {max=load_pts[i] };
     x1=x0+dist;
-    y1=ymax-ymax*load_pts[i];
+    y1=ymax - (ymax/max*.9) * load_pts[i];
     ctx.lineTo(x1,y1);
     if (DEBUG)
       {
@@ -87,9 +95,7 @@ function toggle() {
     }
   }
 function connect() {
-  //
-  // change localhost to your server name if desired
-  //
+
   ws = new WebSocket("ws://localhost:8777");
   ws.addEventListener("open", () => {
     statusDIV.textContent = "connected";
@@ -102,7 +108,7 @@ function connect() {
 
     try {
         msg = JSON.parse(e.data);
-        //console.log("rcvd: "+ e.data);
+        console.log("rcvd: "+ e.data);
     } catch (err) {
         console.warn("Non-JSON message:", e.data);
         return;
@@ -154,4 +160,9 @@ function connect() {
     });
 }
 cBTN.textContent="click to connect";
+
+  $( function() {
+    $( "#draggable" ).draggable();
+  } );
+
 </script></body></html>
