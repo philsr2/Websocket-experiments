@@ -4,6 +4,8 @@ import json
 import signal
 import subprocess
 
+# best version so far, includes async tasks or task as time msg was dropped 
+
 clients = set()
 
 def make_msg(msg_type, **kwargs):
@@ -27,7 +29,7 @@ async def handler(websocket):
 # await websocket.send(make_msg("chat",msg=f"time: {t2}"))
 
 async def calc_load():
-    command="uptime|awk '{print$10}'|sed \"sx,xxg\" "
+    command="uptime|awk '{print$8}'|sed \"sx,xxg\" "
     while True:
         # 1. Fetch the data EXACTLY ONCE
         payload = json.dumps({"type": "cpu", "value": 42})
@@ -41,18 +43,19 @@ async def calc_load():
         if clients:
             await asyncio.gather(
                 *[client.send(payload) for client in clients],
-                return_exceptions=True
+                return_exceptions=True 
                 # Prevents one dead client from breaking the whole loop
-             )
+            )
         await asyncio.sleep(1)
 
 async def main():
     loop = asyncio.get_running_loop()
     stop = loop.create_future()
     loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
-
+   
     asyncio.create_task(calc_load())
 
+    # ip="198.58.119.154"
     ip="localhost"
     pt=8777
     async with websockets.serve(handler,ip,pt,ping_interval=20,ping_timeout=5):
@@ -62,7 +65,7 @@ async def main():
         except asyncio.exceptions.CancelledError:
             print("Got control-C'd")
         finally:
-            pass 
+            pass
 
 if __name__ == "__main__":
     asyncio.run(main())
