@@ -5,6 +5,8 @@ import signal
 import subprocess
 
 # best version so far, includes async tasks or task as time msg was dropped 
+# fixed crappy uptime command which was failing on vm that was up < 10min
+# relying on the number of fields in that case with awk was a bug
 
 clients = set()
 
@@ -26,10 +28,11 @@ async def handler(websocket):
         print("Client disconnected.")
         clients.remove(websocket)
 
+# to re-enable time msgs, this linewould have to go in an async task like calc_load()
 # await websocket.send(make_msg("chat",msg=f"time: {t2}"))
 
 async def calc_load():
-    command="uptime|awk '{print$8}'|sed \"sx,xxg\" "
+    command="uptime|sed \"sx.*average:xx\" |sed \"sx,.*xxg\" "
     while True:
         # 1. Fetch the data EXACTLY ONCE
         payload = json.dumps({"type": "cpu", "value": 42})
@@ -55,7 +58,6 @@ async def main():
    
     asyncio.create_task(calc_load())
 
-    # ip="198.58.119.154"
     ip="localhost"
     pt=8777
     async with websockets.serve(handler,ip,pt,ping_interval=20,ping_timeout=5):
