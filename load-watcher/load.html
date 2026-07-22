@@ -1,12 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <link rel="icon" type="image/x-icon" href="/images/go.ico">
-<!-- the following two lines make the load graph draggable -->
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 <script src="https://code.jquery.com/ui/1.14.2/jquery-ui.js"></script>
 <style>
-canvas{border:1px solid red;}
+canvas{border: 1px solid red;}
 </style>
 </head>
 <body>
@@ -25,7 +25,7 @@ canvas{border:1px solid red;}
 const canvas = document.getElementById("canvas1");
 const ctx = canvas.getContext('2d');
 let load_pts = [];
-let max=0.25;
+let max=0.1;
 const xmax=canvas.width;
 const ymax=canvas.height;
 
@@ -37,7 +37,8 @@ function draw_graph(){
   ctx.beginPath();
   ctx.textAlign = 'center';
   ctx.font = "bold 18px Arial";
-  ctx.fillText('Load avg', 100, 15);
+  title='Load avg: '+last_load;
+  ctx.fillText(title, 100, 15);
   dist=xmax / ( load_pts.length - 1 ) ;
   num = load_pts.length;
   i=0;
@@ -68,6 +69,7 @@ const cBTN = document.getElementById("connect");
 const statusDIV=document.getElementById("status")  
 const max_reconnects=3;
 let tried_reconn=1;
+let last_load;
 
 const DEBUG=0; // set to 1 for spam in console.
 
@@ -107,7 +109,7 @@ function connect() {
 
     try {
         msg = JSON.parse(e.data);
-        console.log("rcvd: "+ e.data);
+        // console.log("rcvd: "+ e.data);
     } catch (err) {
         console.warn("Non-JSON message:", e.data);
         return;
@@ -115,6 +117,7 @@ function connect() {
     switch (msg.type) {
         case "load":
             load_pts.push(msg.text);
+            last_load=msg.text;
             draw_graph();
             break;
         case "error":
